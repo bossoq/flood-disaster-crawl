@@ -13,7 +13,6 @@ const SECRETS: &str = "secrets.json";
 const CREDENTIALS: &str = "credentials.json";
 const ENDPOINT: &str =
     "https://datacenter.disaster.go.th/apiv1/apps/minisite_datacenter/203/sitedownload/10971/23149";
-const CHAT_ID: &str = "19:3c8b9e87f02e48d1b98e1adbe9464fc8@thread.v2";
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
@@ -40,6 +39,7 @@ struct Secrets {
     tenant_id: String,
     client_id: String,
     client_secret: String,
+    chat_id: String,
 }
 
 #[tokio::main]
@@ -257,13 +257,14 @@ async fn refresh_token() -> Result<(), reqwest::Error> {
 }
 
 async fn send_message(file_detail: &FileDetail) -> Result<(), reqwest::Error> {
+    let secrets = read_secrets().await.unwrap();
     let creds = read_credentials().await.unwrap();
     let client = reqwest::Client::new();
     let attachment_id = uuid::Uuid::new_v4().to_string();
     let res = client
         .post(format!(
             "https://graph.microsoft.com/v1.0/chats/{}/messages",
-            &CHAT_ID
+            &secrets.chat_id
         ))
         .header("Authorization", format!("Bearer {}", &creds.access_token))
         .json(&serde_json::json!({
