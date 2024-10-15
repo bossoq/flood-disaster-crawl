@@ -1,3 +1,5 @@
 /target
 credentials.json
 secrets.json
+sqlite.db
+.DS_Store
