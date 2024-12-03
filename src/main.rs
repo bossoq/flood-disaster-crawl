@@ -13,6 +13,8 @@ const SECRETS: &str = "secrets.json";
 const CREDENTIALS: &str = "credentials.json";
 const ENDPOINT: &str =
     "https://datacenter.disaster.go.th/apiv1/apps/minisite_datacenter/203/sitedownload/10971/23149";
+const ENDPOINT2: &str =
+    "https://datacenter.disaster.go.th/apiv1/apps/minisite_datacenter/203/sitedownload/10971/23926";
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
@@ -66,13 +68,23 @@ async fn main() {
             panic!("Error migrating database: {}", e);
         }
     }
-    let file_list = match fetch_json().await {
+    let mut file_list: Vec<FileDetail> = Vec::new();
+    let file_list1 = match fetch_json().await {
         Ok(file_list) => file_list,
         Err(e) => {
             error!("Error fetching JSON: {}", e);
             panic!("Error fetching JSON: {}", e);
         }
     };
+    let file_list2 = match fetch_json2().await {
+        Ok(file_list) => file_list,
+        Err(e) => {
+            error!("Error fetching JSON: {}", e);
+            panic!("Error fetching JSON: {}", e);
+        }
+    };
+    file_list.extend(file_list1);
+    file_list.extend(file_list2);
     let new_file_list = check_new_id(file_list, &db).await;
     if new_file_list.len() == 0 {
         info!("No new files found");
@@ -178,6 +190,19 @@ async fn read_credentials() -> Result<Credentials, std::io::Error> {
 async fn fetch_json() -> Result<Vec<FileDetail>, reqwest::Error> {
     let client = reqwest::Client::new();
     let res = client.get(ENDPOINT).send().await?;
+    let body = res.text().await?;
+    let json: serde_json::Value = serde_json::from_str(&body).unwrap();
+    let data = json.get("data").expect("No Data");
+    let file_list: Vec<FileDetail> =
+        serde_json::from_value(data.get("file_list").expect("No File List").clone())
+            .expect("Cannot parse JSON");
+    debug!("{:?}", file_list);
+    Ok(file_list)
+}
+
+async fn fetch_json2() -> Result<Vec<FileDetail>, reqwest::Error> {
+    let client = reqwest::Client::new();
+    let res = client.get(ENDPOINT2).send().await?;
     let body = res.text().await?;
     let json: serde_json::Value = serde_json::from_str(&body).unwrap();
     let data = json.get("data").expect("No Data");
